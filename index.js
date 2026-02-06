@@ -51,9 +51,13 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: Browsers.ubuntu("Chrome"),
+                browser: ["Ubuntu", "Chrome", "20.0.04"], // Latest 2026 Standard
                 markOnlineOnConnect: true,
+                generateHighQualityLinkPreview: true,
                 syncFullHistory: false,
+                retryRequestDelayMs: 5000, // Robust retry delay
+                connectTimeoutMs: 60000,   // Long connection timeout
+                keepAliveIntervalMs: 10000, // Frequent keep-alive
                 fireInitQueries: false,
                 shouldSyncHistoryMessage: () => false,
                 getMessage: async (key) => { return { conversation: 'XENO XD V2' } }
