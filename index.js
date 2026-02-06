@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'fatal' }),
-                browser: ["XENO XD V2", "Desktop", "1.0.0"],
+                browser: Browsers.ubuntu("Chrome"),
                 markOnlineOnConnect: false
             });
 
@@ -61,12 +61,11 @@ io.on('connection', (socket) => {
             if (method === 'pairing-code' && phoneNumber) {
                 const clean = phoneNumber.replace(/\D/g, '');
 
-                // Detailed progress to frontend
                 socket.emit('status', 'STABILIZING CONNECTION...');
                 await delay(3000);
 
                 socket.emit('status', 'REQUESTING 8-DIGIT CODE...');
-                await delay(5000); // 8 seconds total delay for maximum stability
+                await delay(2000);
 
                 try {
                     console.log(`[${sid}] Sending requestPairingCode for ${clean}`);
@@ -89,15 +88,27 @@ io.on('connection', (socket) => {
 
                 if (connection === 'open') {
                     console.log(`[${sid}] CONNECTION SUCCESSFUL`);
-                    const credsFile = path.join(sessionsDir, sid, 'creds.json');
-                    const creds = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
+                    await delay(5000); // Wait for metadata stabilization
 
-                    // Simple prefix for your bot
-                    const sessionID = `XENO_${Buffer.from(JSON.stringify(creds)).toString('base64')}`;
+                    try {
+                        const credsFile = path.join(sessionsDir, sid, 'creds.json');
+                        const creds = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
+                        const sessionID = `XENO_${Buffer.from(JSON.stringify(creds)).toString('base64')}`;
 
-                    socket.emit('success', { session: sessionID });
-                    await delay(2000);
-                    await sock.sendMessage(sock.user.id, { text: `*XENO XD V2 PAIRED*\n\nYour session ID is:\n\n\`\`\`${sessionID}\`\`\`` });
+                        socket.emit('success', { session: sessionID });
+
+                        // Ensure target JID is clean (remove device/session suffix)
+                        const targetId = sock.user.id.includes(':') ? sock.user.id.split(':')[0] : sock.user.id.split('@')[0];
+                        const targetJid = `${targetId}@s.whatsapp.net`;
+
+                        await sock.sendMessage(targetJid, {
+                            text: `*XENO XD V2 PAIRED SUCCESSFULLY*\n\n*Session ID:*\n\`\`\`${sessionID}\`\`\`\n\n_Do not share this code with anyone!_`
+                        });
+
+                        console.log(`[${sid}] Session ID sent to ${targetJid}`);
+                    } catch (sendErr) {
+                        console.error(`[${sid}] Error sending session ID:`, sendErr);
+                    }
 
                     setTimeout(() => cleanup(sid), 10000);
                 }
