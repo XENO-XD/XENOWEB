@@ -1,5 +1,4 @@
-node_modules
-sessions
-.DS_Store
-*.log
+node_modules/
+sessions/
 .env
+.DS_Store

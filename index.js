@@ -3,142 +3,124 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const pino = require('pino');
-const fs = require('fs');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
     delay,
     makeCacheableSignalKeyStore,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-    Browsers
+    DisconnectReason
 } = require('@whiskeysockets/baileys');
+const QRCode = require('qrcode');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 
-const sessionsDir = path.join(__dirname, 'sessions');
-if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir);
-
-function cleanup(id) {
-    const dir = path.join(sessionsDir, id);
-    if (fs.existsSync(dir)) {
-        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { }
+// Helper function to clean up session folder
+function cleanupSession(id) {
+    const sessionPath = path.join(__dirname, 'sessions', id);
+    if (fs.existsSync(sessionPath)) {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
     }
 }
 
 io.on('connection', (socket) => {
-    const sid = socket.id;
+    console.log('Client connected:', socket.id);
     let sock = null;
+    const sessionId = socket.id;
 
-    socket.on('start-pairing', async ({ method, phoneNumber }) => {
-        console.log(`[${sid}] New Request: ${method} | Num: ${phoneNumber}`);
-        cleanup(sid);
+    socket.on('start-pairing', async (data) => {
+        const { method, phoneNumber } = data;
+        console.log(`Starting ${method} pairing for ${sessionId}`);
 
-        try {
-            const { state, saveCreds } = await useMultiFileAuthState(path.join(sessionsDir, sid));
-            const { version } = await fetchLatestBaileysVersion();
+        cleanupSession(sessionId);
+        const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'sessions', sessionId));
 
-            sock = makeWASocket({
-                version,
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: 'silent' }),
-                browser: Browsers.ubuntu("Chrome"), // Revert to stable Ubuntu
-                markOnlineOnConnect: true,
-                generateHighQualityLinkPreview: true,
-                syncFullHistory: false,
-                retryRequestDelayMs: 2000,
-                connectTimeoutMs: 60000,
-                keepAliveIntervalMs: 10000,
-                fireInitQueries: false,
-                shouldSyncHistoryMessage: () => false,
-                getMessage: async (key) => { return { conversation: 'XENO XD V2' } }
-            });
+        sock = makeWASocket({
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' })),
+            },
+            printQRInTerminal: false,
+            logger: pino({ level: 'fatal' }),
+            browser: ["Ubuntu", "Chrome", "20.0.04"]
+        });
 
-            sock.ev.on('creds.update', saveCreds);
-
-            // Pairing code request logic
-            if (method === 'pairing-code' && phoneNumber) {
-                const clean = phoneNumber.replace(/\D/g, '');
-
-                socket.emit('status', 'XENO ENGINE: INITIALIZING...');
-                await delay(3000);
-
-                socket.emit('status', 'STABILIZING WHATSAPP CONNECTION...');
-                await delay(5000);
-
+        if (method === 'pairing-code' && phoneNumber) {
+            setTimeout(async () => {
                 try {
-                    console.log(`[${sid}] Requesting pairing code for ${clean}`);
-                    const code = await sock.requestPairingCode(clean);
-                    console.log(`[${sid}] Code Generated: ${code}`);
-                    socket.emit('pairing-code', { code: code?.toUpperCase() });
+                    const code = await sock.requestPairingCode(phoneNumber);
+                    socket.emit('pairing-code', { code });
                 } catch (err) {
-                    console.error(`[${sid}] Pairing Code Error:`, err.message);
-                    socket.emit('error', 'CONNECTION TIMEOUT. Please try again after 1 minute.');
+                    console.error('Error requesting pairing code:', err);
+                    socket.emit('error', 'Failed to generate pairing code. Make sure the number is correct.');
                 }
+            }, 3000);
+        }
+
+        sock.ev.on('creds.update', saveCreds);
+
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr && method === 'qr') {
+                const qrDataURL = await QRCode.toDataURL(qr);
+                socket.emit('qr', qrDataURL);
             }
 
-            sock.ev.on('connection.update', async (update) => {
-                const { connection, lastDisconnect, qr } = update;
-
-                if (qr && method === 'qr') {
-                    const QRCode = require('qrcode');
-                    socket.emit('qr', await QRCode.toDataURL(qr));
+            if (connection === 'close') {
+                const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+                console.log('Connection closed. Reconnect:', shouldReconnect);
+                if (!shouldReconnect) {
+                    socket.emit('error', 'Connection closed by WhatsApp.');
+                    cleanupSession(sessionId);
                 }
+            } else if (connection === 'open') {
+                console.log('Connection opened!');
 
-                if (connection === 'open') {
-                    console.log(`[${sid}] SUCCESS: DEVICE LINKED`);
-                    await delay(10000); // 10s wait for full data sync before sending ID
+                // Get the session string (creds.json)
+                const credsFile = path.join(__dirname, 'sessions', sessionId, 'creds.json');
+                if (fs.existsSync(credsFile)) {
+                    const credsContent = fs.readFileSync(credsFile, 'utf-8');
+                    const sessionString = Buffer.from(credsContent).toString('base64');
 
-                    try {
-                        const credsFile = path.join(sessionsDir, sid, 'creds.json');
-                        const creds = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
-                        const sessionID = `XENO_${Buffer.from(JSON.stringify(creds)).toString('base64')}`;
+                    socket.emit('success', {
+                        message: 'Connected successfully!',
+                        session: sessionString
+                    });
 
-                        socket.emit('success', { session: sessionID });
+                    // Send a message to the user with the session
+                    await delay(2000);
+                    await sock.sendMessage(sock.user.id, { text: `*XENO XD V2 SESSION CONNECTED*\n\nYour session ID is:\n\n\`\`\`${sessionString}\`\`\`\n\nKeep this safe!` });
 
-                        const targetId = sock.user.id.includes(':') ? sock.user.id.split(':')[0] : sock.user.id.split('@')[0];
-                        const targetJid = `${targetId}@s.whatsapp.net`;
-
-                        await sock.sendMessage(targetJid, {
-                            text: `*Successfully Linked to XENO XD V2*\n\n*Your Session ID:*\n\`\`\`${sessionID}\`\`\`\n\n_Keep this ID safe. Do not share it!_`
-                        });
-
-                        console.log(`[${sid}] Session ID sent to ${targetJid}`);
-                    } catch (sendErr) {
-                        console.error(`[${sid}] Post-connection error:`, sendErr.message);
-                    }
-
-                    // Clean up files after 1 minute to ensure stability
-                    setTimeout(() => cleanup(sid), 60000);
+                    // Cleanup session after success to avoid lingering data
+                    // Wait a bit to ensure everything is sent
+                    setTimeout(() => {
+                        sock.logout();
+                        cleanupSession(sessionId);
+                    }, 5000);
                 }
-
-                if (connection === 'close') {
-                    const reason = lastDisconnect?.error?.output?.statusCode;
-                    console.log(`[${sid}] Connection closed. Reason: ${reason}`);
-                    if (reason === DisconnectReason.loggedOut) {
-                        cleanup(sid);
-                    }
-                }
-            });
-
-        } catch (fatal) {
-            console.error('Fatal Init Error:', fatal);
-            socket.emit('error', 'INTERNAL SERVER ERROR. PLEASE REFRESH.');
-        }
+            }
+        });
     });
 
     socket.on('disconnect', () => {
-        if (sock) try { sock.end(); } catch (e) { }
+        console.log('Client disconnected:', socket.id);
+        if (sock) {
+            try { sock.logout(); } catch (e) { }
+        }
+        cleanupSession(sessionId);
     });
 });
 
-server.listen(PORT, () => console.log(`XENO SERVER: http://localhost:${PORT}`));
+server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    if (!fs.existsSync(path.join(__dirname, 'sessions'))) {
+        fs.mkdirSync(path.join(__dirname, 'sessions'));
+    }
+});

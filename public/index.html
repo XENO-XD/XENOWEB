@@ -19,56 +19,59 @@
             <div class="logo">
                 <span class="logo-text">XENO XD <span class="v2">V2</span></span>
             </div>
-            <h1>WhatsApp Connection</h1>
-            <p>Enter your phone number to generate a pairing code.</p>
+            <h1>WhatsApp Pairing</h1>
+            <p>Connect your account to start the bot session.</p>
         </header>
 
         <main>
-            <div id="main-card" class="card fade-in">
-                <div id="input-view">
-                    <h2>Pair with Phone Number</h2>
-                    <p class="subtitle">Include country code (e.g., 919645991937)</p>
-                    <div class="input-group">
-                        <input type="text" id="phone-number" placeholder="91XXXXXXXXXX" autocomplete="off">
-                        <button id="btn-submit-phone">Get Pairing Code</button>
-                    </div>
-                    <div class="divider"><span>OR</span></div>
-                    <button id="btn-show-qr" class="secondary-btn">Log in with QR Code</button>
+            <div id="method-selector" class="card fade-in">
+                <h2>Choose Pairing Method</h2>
+                <div class="methods">
+                    <button id="btn-qr" class="method-btn">
+                        <div class="icon">QR</div>
+                        <span>QR Code</span>
+                        <small>Scan with WhatsApp Web</small>
+                    </button>
+                    <button id="btn-code" class="method-btn">
+                        <div class="icon">123</div>
+                        <span>Pairing Code</span>
+                        <small>Enter phone number</small>
+                    </button>
                 </div>
+            </div>
 
-                <div id="pairing-view" class="hidden">
-                    <div id="status-message">Initializing...</div>
-                    <div id="loading-spinner" class="spinner"></div>
-
-                    <div id="code-container" class="hidden">
-                        <p>Enter this code on your phone:</p>
-                        <div class="pairing-code" id="display-code">--------</div>
-                    </div>
-
-                    <div id="qr-container" class="hidden">
-                        <p>Scan this QR code with WhatsApp:</p>
-                        <div class="qr-wrapper">
-                            <img id="qr-img" src="" alt="QR Code">
-                        </div>
-                    </div>
-
-                    <div id="success-box" class="hidden">
-                        <div class="success-icon">✓</div>
-                        <h3>Connected Successfully!</h3>
-                        <p>Your session ID has been sent to your WhatsApp number.</p>
-                        <div class="session-box">
-                            <textarea id="session-output" readonly></textarea>
-                            <button id="btn-copy">Copy Session ID</button>
-                        </div>
-                    </div>
-
-                    <button id="btn-restart" class="back-link">Cancel & Start Over</button>
+            <div id="phone-input-section" class="card hidden">
+                <h2>Enter Phone Number</h2>
+                <p>Include country code (e.g., 919645991937)</p>
+                <div class="input-group">
+                    <input type="text" id="phone-number" placeholder="Enter number..." autocomplete="off">
+                    <button id="btn-submit-phone">Generate Code</button>
                 </div>
+                <button class="back-link">Back to methods</button>
+            </div>
+
+            <div id="pairing-display" class="card hidden">
+                <div id="status-message">Initializing...</div>
+                <div id="qr-container" class="hidden">
+                    <img id="qr-img" src="" alt="QR Code">
+                </div>
+                <div id="code-container" class="hidden">
+                    <div class="pairing-code" id="display-code">--------</div>
+                </div>
+                <div id="loading-spinner" class="spinner"></div>
+                <div id="success-box" class="hidden">
+                    <div class="success-icon">✓</div>
+                    <h3>Connected!</h3>
+                    <p>Your session ID has been sent to your WhatsApp.</p>
+                    <textarea id="session-output" readonly></textarea>
+                    <button id="btn-copy">Copy Session ID</button>
+                </div>
+                <button class="back-link">Cancel</button>
             </div>
         </main>
 
         <footer>
-            <p>&copy; 2026 XENO XD V2. Simple • Secure • Fast</p>
+            <p>&copy; 2026 XENO XD V2. All rights reserved.</p>
         </footer>
     </div>
 

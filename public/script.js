@@ -1,107 +1,79 @@
 const socket = io();
 
-const inputView = document.getElementById('input-view');
-const pairingView = document.getElementById('pairing-view');
-const phoneNumberInput = document.getElementById('phone-number');
+const methodSelector = document.getElementById('method-selector');
+const phoneInputSection = document.getElementById('phone-input-section');
+const pairingDisplay = document.getElementById('pairing-display');
+
+const btnQr = document.getElementById('btn-qr');
+const btnCode = document.getElementById('btn-code');
 const btnSubmitPhone = document.getElementById('btn-submit-phone');
-const btnShowQr = document.getElementById('btn-show-qr');
-const btnRestart = document.getElementById('btn-restart');
+const backLinks = document.querySelectorAll('.back-link');
+
 const statusMessage = document.getElementById('status-message');
-const loadingSpinner = document.getElementById('loading-spinner');
-const codeContainer = document.getElementById('code-container');
-const displayCode = document.getElementById('display-code');
 const qrContainer = document.getElementById('qr-container');
+const codeContainer = document.getElementById('code-container');
 const qrImg = document.getElementById('qr-img');
+const displayCode = document.getElementById('display-code');
+const loadingSpinner = document.getElementById('loading-spinner');
 const successBox = document.getElementById('success-box');
 const sessionOutput = document.getElementById('session-output');
 const btnCopy = document.getElementById('btn-copy');
 
-const charPool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-let shuffleInterval = null;
+let currentMethod = '';
 
-function startShuffling(target, length) {
-    if (shuffleInterval) clearInterval(shuffleInterval);
-    shuffleInterval = setInterval(() => {
-        let text = "";
-        for (let i = 0; i < length; i++) {
-            text += charPool.charAt(Math.floor(Math.random() * charPool.length));
-        }
-        target.textContent = text;
-    }, 100);
-}
-
-function stopShuffling() {
-    if (shuffleInterval) {
-        clearInterval(shuffleInterval);
-        shuffleInterval = null;
-    }
-}
-
-btnSubmitPhone.addEventListener('click', () => {
-    let raw = phoneNumberInput.value.trim();
-    let num = raw.replace(/\D/g, '');
-
-    if (num.length < 8) {
-        return alert('Please enter your full country code + number. e.g. 919645991937');
-    }
-
-    inputView.classList.add('hidden');
-    pairingView.classList.remove('hidden');
-    loadingSpinner.classList.remove('hidden');
-    codeContainer.classList.remove('hidden');
-
-    statusMessage.textContent = 'CONNECTING TO WHATSAPP...';
-    startShuffling(displayCode, 8);
-
-    socket.emit('start-pairing', { method: 'pairing-code', phoneNumber: num });
-});
-
-btnShowQr.addEventListener('click', () => {
-    inputView.classList.add('hidden');
-    pairingView.classList.remove('hidden');
-    loadingSpinner.classList.remove('hidden');
-    qrContainer.classList.add('hidden');
-    statusMessage.textContent = 'GENERATING QR CODE...';
+btnQr.addEventListener('click', () => {
+    currentMethod = 'qr';
+    showSection(pairingDisplay);
+    statusMessage.textContent = 'Generating QR Code...';
     socket.emit('start-pairing', { method: 'qr' });
 });
 
-btnRestart.addEventListener('click', () => {
-    location.reload();
+btnCode.addEventListener('click', () => {
+    currentMethod = 'pairing-code';
+    showSection(phoneInputSection);
 });
 
-// NEW: Real-time status updates from backend
-socket.on('status', (msg) => {
-    statusMessage.textContent = msg;
-    console.log('[STATUS]', msg);
+btnSubmitPhone.addEventListener('click', () => {
+    const phoneNumber = document.getElementById('phone-number').value.replace(/\D/g, '');
+    if (!phoneNumber) return alert('Please enter a valid phone number');
+
+    showSection(pairingDisplay);
+    statusMessage.textContent = 'Requesting Pairing Code...';
+    loadingSpinner.classList.remove('hidden');
+    socket.emit('start-pairing', { method: 'pairing-code', phoneNumber });
 });
 
-socket.on('pairing-code', (data) => {
-    stopShuffling();
-    statusMessage.textContent = 'ENTER THIS CODE ON YOUR PHONE';
-    displayCode.textContent = data.code;
-    displayCode.style.color = '#00f2fe';
-    loadingSpinner.classList.add('hidden');
+backLinks.forEach(link => {
+    link.addEventListener('click', () => {
+        location.reload(); // Simplest way to reset state
+    });
 });
 
-socket.on('qr', (url) => {
-    statusMessage.textContent = 'SCAN THIS CODE IN WHATSAPP';
-    qrImg.src = url;
+socket.on('qr', (dataURL) => {
+    statusMessage.textContent = 'Scan this QR code with WhatsApp';
+    qrImg.src = dataURL;
     qrContainer.classList.remove('hidden');
     loadingSpinner.classList.add('hidden');
 });
 
-socket.on('success', (data) => {
-    stopShuffling();
-    statusMessage.textContent = 'CONNECTED!';
-    codeContainer.classList.add('hidden');
-    qrContainer.classList.add('hidden');
+socket.on('pairing-code', (data) => {
+    statusMessage.textContent = 'Enter this code in your WhatsApp notifications';
+    displayCode.textContent = data.code;
+    codeContainer.classList.remove('hidden');
     loadingSpinner.classList.add('hidden');
+});
+
+socket.on('success', (data) => {
+    statusMessage.classList.add('hidden');
+    qrContainer.classList.add('hidden');
+    codeContainer.classList.add('hidden');
+    loadingSpinner.classList.add('hidden');
+
     successBox.classList.remove('hidden');
     sessionOutput.value = data.session;
 });
 
 socket.on('error', (msg) => {
-    stopShuffling();
     alert(msg);
     location.reload();
 });
@@ -109,6 +81,12 @@ socket.on('error', (msg) => {
 btnCopy.addEventListener('click', () => {
     sessionOutput.select();
     document.execCommand('copy');
-    btnCopy.textContent = 'COPIED!';
-    setTimeout(() => btnCopy.textContent = 'COPY SESSION ID', 2000);
+    btnCopy.textContent = 'Copied!';
+    setTimeout(() => btnCopy.textContent = 'Copy Session ID', 2000);
 });
+
+function showSection(section) {
+    [methodSelector, phoneInputSection, pairingDisplay].forEach(s => s.classList.add('hidden'));
+    section.classList.remove('hidden');
+    section.classList.add('fade-in');
+}
