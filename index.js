@@ -51,9 +51,8 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: Browsers.macOS("Chrome"), // Most stable for MD linking
+                browser: ["Chrome (Mac)", "Desktop", "109.0.5414.119"],
                 markOnlineOnConnect: true,
-                generateHighQualityLinkPreview: true,
                 syncFullHistory: false,
                 fireInitQueries: false,
                 shouldSyncHistoryMessage: () => false,
