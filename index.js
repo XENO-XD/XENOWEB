@@ -51,13 +51,13 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: ["Ubuntu", "Chrome", "20.0.04"], // Latest 2026 Standard
-                markOnlineOnConnect: true,
-                generateHighQualityLinkPreview: true,
+                browser: ["Windows", "Chrome", "10.0.0"], // Standard Windows 10 signature
+                markOnlineOnConnect: false, // Wait until fully connected
                 syncFullHistory: false,
-                retryRequestDelayMs: 5000, // Robust retry delay
-                connectTimeoutMs: 60000,   // Long connection timeout
-                keepAliveIntervalMs: 10000, // Frequent keep-alive
+                generateHighQualityLinkPreview: true,
+                connectTimeoutMs: 60000,
+                defaultQueryTimeoutMs: 0, // Disable query timeout
+                keepAliveIntervalMs: 10000,
                 fireInitQueries: false,
                 shouldSyncHistoryMessage: () => false,
                 getMessage: async (key) => { return { conversation: 'XENO XD V2' } }
