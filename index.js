@@ -51,12 +51,12 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: ["Windows", "Chrome", "10.0.0"], // Standard Windows 10 signature
-                markOnlineOnConnect: false, // Wait until fully connected
-                syncFullHistory: false,
+                browser: Browsers.ubuntu("Chrome"), // Revert to stable Ubuntu
+                markOnlineOnConnect: true,
                 generateHighQualityLinkPreview: true,
+                syncFullHistory: false,
+                retryRequestDelayMs: 2000,
                 connectTimeoutMs: 60000,
-                defaultQueryTimeoutMs: 0, // Disable query timeout
                 keepAliveIntervalMs: 10000,
                 fireInitQueries: false,
                 shouldSyncHistoryMessage: () => false,
