@@ -8,7 +8,8 @@ const {
     useMultiFileAuthState,
     delay,
     makeCacheableSignalKeyStore,
-    DisconnectReason
+    DisconnectReason,
+    jidNormalizedUser
 } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const fs = require('fs');
@@ -95,8 +96,13 @@ io.on('connection', (socket) => {
                     });
 
                     // Send a message to the user with the session
-                    await delay(2000);
-                    await sock.sendMessage(sock.user.id, { text: `*XENO XD V2 SESSION CONNECTED*\n\nYour session ID is:\n\n\`\`\`${sessionString}\`\`\`\n\nKeep this safe!` });
+                    await delay(5000);
+                    try {
+                        const userJid = jidNormalizedUser(sock.user.id);
+                        await sock.sendMessage(userJid, { text: `*XENO XD V2 SESSION CONNECTED*\n\nYour session ID is:\n\n\`\`\`${sessionString}\`\`\`\n\nKeep this safe!` });
+                    } catch (e) {
+                        console.error('Failed to send session message:', e);
+                    }
 
                     // Cleanup session after success to avoid lingering data
                     // Wait a bit to ensure everything is sent
