@@ -1,0 +1,18 @@
+{
+  "name": "xeno-xd-v2-session-generator",
+  "version": "1.0.0",
+  "description": "WhatsApp Session Generator for XENO XD V2",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@adiwajshing/keyed-db": "^0.2.4",
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "express": "^5.2.1",
+    "libsignal-node": "^2.0.1",
+    "pino": "^10.3.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.3"
+  }
+}

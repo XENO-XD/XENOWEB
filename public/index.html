@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XENO XD V2 - WhatsApp Pairing</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <meta name="description" content="Securely pair your WhatsApp bot with XENO XD V2 using QR Code or Pairing Code.">
+</head>
+
+<body>
+    <div class="background-animation"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="logo-text">XENO XD <span class="v2">V2</span></span>
+            </div>
+            <h1>WhatsApp Connection</h1>
+            <p>Enter your phone number to generate a pairing code.</p>
+        </header>
+
+        <main>
+            <div id="main-card" class="card fade-in">
+                <div id="input-view">
+                    <h2>Pair with Phone Number</h2>
+                    <p class="subtitle">Include country code (e.g., 919645991937)</p>
+                    <div class="input-group">
+                        <input type="text" id="phone-number" placeholder="91XXXXXXXXXX" autocomplete="off">
+                        <button id="btn-submit-phone">Get Pairing Code</button>
+                    </div>
+                    <div class="divider"><span>OR</span></div>
+                    <button id="btn-show-qr" class="secondary-btn">Log in with QR Code</button>
+                </div>
+
+                <div id="pairing-view" class="hidden">
+                    <div id="status-message">Initializing...</div>
+                    <div id="loading-spinner" class="spinner"></div>
+
+                    <div id="code-container" class="hidden">
+                        <p>Enter this code on your phone:</p>
+                        <div class="pairing-code" id="display-code">--------</div>
+                    </div>
+
+                    <div id="qr-container" class="hidden">
+                        <p>Scan this QR code with WhatsApp:</p>
+                        <div class="qr-wrapper">
+                            <img id="qr-img" src="" alt="QR Code">
+                        </div>
+                    </div>
+
+                    <div id="success-box" class="hidden">
+                        <div class="success-icon">✓</div>
+                        <h3>Connected Successfully!</h3>
+                        <p>Your session ID has been sent to your WhatsApp number.</p>
+                        <div class="session-box">
+                            <textarea id="session-output" readonly></textarea>
+                            <button id="btn-copy">Copy Session ID</button>
+                        </div>
+                    </div>
+
+                    <button id="btn-restart" class="back-link">Cancel & Start Over</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 XENO XD V2. Simple • Secure • Fast</p>
+        </footer>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
