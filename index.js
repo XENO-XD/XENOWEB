@@ -47,34 +47,41 @@ io.on('connection', (socket) => {
                 version,
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' })),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
                 },
                 printQRInTerminal: false,
-                logger: pino({ level: 'fatal' }),
-                browser: Browsers.ubuntu("Chrome"),
-                markOnlineOnConnect: false
+                logger: pino({ level: 'silent' }),
+                browser: Browsers.macOS("Desktop"),
+                markOnlineOnConnect: false,
+                syncFullHistory: false
             });
 
             sock.ev.on('creds.update', saveCreds);
 
-            // Handle pairing code logic ONLY for code method
+            // Pairing code request
             if (method === 'pairing-code' && phoneNumber) {
                 const clean = phoneNumber.replace(/\D/g, '');
 
-                socket.emit('status', 'STABILIZING CONNECTION...');
-                await delay(3000);
-
-                socket.emit('status', 'REQUESTING 8-DIGIT CODE...');
-                await delay(2000);
+                socket.emit('status', 'STABILIZING WHATSAPP SERVER...');
+                await delay(5000); // 5s stabilization is safer
 
                 try {
-                    console.log(`[${sid}] Sending requestPairingCode for ${clean}`);
+                    console.log(`[${sid}] Attempting pairing code for: ${clean}`);
+                    socket.emit('status', 'REQUESTING CODE FROM WHATSAPP...');
+
                     const code = await sock.requestPairingCode(clean);
-                    console.log(`[${sid}] SUCCESS: ${code}`);
-                    socket.emit('pairing-code', { code: code?.toUpperCase() });
+                    console.log(`[${sid}] Pairing Code Generated: ${code}`);
+
+                    if (code) {
+                        socket.emit('pairing-code', { code: code.toUpperCase() });
+                    } else {
+                        throw new Error("EMPTY_CODE");
+                    }
                 } catch (err) {
-                    console.error(`[${sid}] Pairing Code Error:`, err);
-                    socket.emit('error', 'WHATSAPP REFUSED CODE REQUEST. Please wait 5 minutes and try again.');
+                    console.error(`[${sid}] Pairing Code Failed:`, err.message);
+                    let errorMsg = 'WHATSAPP REFUSED REQUEST. Try again in 2 minutes.';
+                    if (err.message?.includes('429')) errorMsg = 'TOO MANY REQUESTS. Please wait 10 minutes.';
+                    socket.emit('error', errorMsg);
                 }
             }
 
