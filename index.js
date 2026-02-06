@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: ["Chrome (Mac)", "Desktop", "109.0.5414.119"],
+                browser: Browsers.ubuntu("Chrome"),
                 markOnlineOnConnect: true,
                 syncFullHistory: false,
                 fireInitQueries: false,
