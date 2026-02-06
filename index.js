@@ -51,37 +51,35 @@ io.on('connection', (socket) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: Browsers.macOS("Desktop"),
-                markOnlineOnConnect: false,
-                syncFullHistory: false
+                browser: Browsers.macOS("Chrome"), // Most stable for MD linking
+                markOnlineOnConnect: true,
+                generateHighQualityLinkPreview: true,
+                syncFullHistory: false,
+                fireInitQueries: false,
+                shouldSyncHistoryMessage: () => false,
+                getMessage: async (key) => { return { conversation: 'XENO XD V2' } }
             });
 
             sock.ev.on('creds.update', saveCreds);
 
-            // Pairing code request
+            // Pairing code request logic
             if (method === 'pairing-code' && phoneNumber) {
                 const clean = phoneNumber.replace(/\D/g, '');
 
-                socket.emit('status', 'STABILIZING WHATSAPP SERVER...');
-                await delay(5000); // 5s stabilization is safer
+                socket.emit('status', 'XENO ENGINE: INITIALIZING...');
+                await delay(3000);
+
+                socket.emit('status', 'STABILIZING WHATSAPP CONNECTION...');
+                await delay(5000);
 
                 try {
-                    console.log(`[${sid}] Attempting pairing code for: ${clean}`);
-                    socket.emit('status', 'REQUESTING CODE FROM WHATSAPP...');
-
+                    console.log(`[${sid}] Requesting pairing code for ${clean}`);
                     const code = await sock.requestPairingCode(clean);
-                    console.log(`[${sid}] Pairing Code Generated: ${code}`);
-
-                    if (code) {
-                        socket.emit('pairing-code', { code: code.toUpperCase() });
-                    } else {
-                        throw new Error("EMPTY_CODE");
-                    }
+                    console.log(`[${sid}] Code Generated: ${code}`);
+                    socket.emit('pairing-code', { code: code?.toUpperCase() });
                 } catch (err) {
-                    console.error(`[${sid}] Pairing Code Failed:`, err.message);
-                    let errorMsg = 'WHATSAPP REFUSED REQUEST. Try again in 2 minutes.';
-                    if (err.message?.includes('429')) errorMsg = 'TOO MANY REQUESTS. Please wait 10 minutes.';
-                    socket.emit('error', errorMsg);
+                    console.error(`[${sid}] Pairing Code Error:`, err.message);
+                    socket.emit('error', 'CONNECTION TIMEOUT. Please try again after 1 minute.');
                 }
             }
 
@@ -94,8 +92,8 @@ io.on('connection', (socket) => {
                 }
 
                 if (connection === 'open') {
-                    console.log(`[${sid}] CONNECTION SUCCESSFUL`);
-                    await delay(5000); // Wait for metadata stabilization
+                    console.log(`[${sid}] SUCCESS: DEVICE LINKED`);
+                    await delay(10000); // 10s wait for full data sync before sending ID
 
                     try {
                         const credsFile = path.join(sessionsDir, sid, 'creds.json');
@@ -104,26 +102,28 @@ io.on('connection', (socket) => {
 
                         socket.emit('success', { session: sessionID });
 
-                        // Ensure target JID is clean (remove device/session suffix)
                         const targetId = sock.user.id.includes(':') ? sock.user.id.split(':')[0] : sock.user.id.split('@')[0];
                         const targetJid = `${targetId}@s.whatsapp.net`;
 
                         await sock.sendMessage(targetJid, {
-                            text: `*XENO XD V2 PAIRED SUCCESSFULLY*\n\n*Session ID:*\n\`\`\`${sessionID}\`\`\`\n\n_Do not share this code with anyone!_`
+                            text: `*Successfully Linked to XENO XD V2*\n\n*Your Session ID:*\n\`\`\`${sessionID}\`\`\`\n\n_Keep this ID safe. Do not share it!_`
                         });
 
                         console.log(`[${sid}] Session ID sent to ${targetJid}`);
                     } catch (sendErr) {
-                        console.error(`[${sid}] Error sending session ID:`, sendErr);
+                        console.error(`[${sid}] Post-connection error:`, sendErr.message);
                     }
 
-                    setTimeout(() => cleanup(sid), 10000);
+                    // Clean up files after 1 minute to ensure stability
+                    setTimeout(() => cleanup(sid), 60000);
                 }
 
                 if (connection === 'close') {
                     const reason = lastDisconnect?.error?.output?.statusCode;
-                    console.log(`[${sid}] Closed. Reason: ${reason}`);
-                    if (reason === DisconnectReason.loggedOut) cleanup(sid);
+                    console.log(`[${sid}] Connection closed. Reason: ${reason}`);
+                    if (reason === DisconnectReason.loggedOut) {
+                        cleanup(sid);
+                    }
                 }
             });
 
