@@ -1,0 +1,13 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/xeno-xd/home/xenomd-session/public_html/
+    - /bin/cp -R images $DEPLOYPATH
+    
+
+
+
+
+
+
+
